@@ -2,3 +2,4 @@ node_modules/
 #src/config/auth.js
 tmp/uploads/*.*
 !tmp/uploads/.gitkeep
+.env
