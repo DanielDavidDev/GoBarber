@@ -7,7 +7,8 @@ import File from '../models/File';
 import Appointment from '../models/Appointment';
 import Notification from '../schemas/Notification';
 
-import Mail from '../../lib/Mail';
+import CancellationMail from '../jobs/CancellationMail';
+import Queue from '../../lib/Queue';
 
 class AppointmentController {
   async index(req, res) {
@@ -116,12 +117,12 @@ class AppointmentController {
       { locale: pt }
     );
 
-    const not = await Notification.create({
+    await Notification.create({
       content: `Novo agendamento de ${user.name} para ${formattedDate}`,
       user: provider_id,
     });
 
-    return res.json({ appointment, not });
+    return res.json({ appointment });
   }
 
   async delete(req, res) {
@@ -131,6 +132,11 @@ class AppointmentController {
           model: User,
           as: 'provider',
           attributes: ['name', 'email'],
+        },
+        {
+          model: User,
+          as: 'user',
+          attributes: ['name'],
         },
       ],
     });
@@ -151,10 +157,8 @@ class AppointmentController {
 
     appointment.canceled_at = new Date();
 
-    await Mail.sendMail({
-      to: `${appointment.provider.name} <${appointment.provider.email}>`,
-      subject: 'Agendamento cancelado',
-      text: 'Você tem um novo cancelamento',
+    await Queue.add(CancellationMail.key, {
+      appointment,
     });
 
     await appointment.save();
